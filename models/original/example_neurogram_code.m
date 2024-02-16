@@ -6,6 +6,16 @@ if exist ('OCTAVE_VERSION', 'builtin') ~= 0
   end
 end
 
+if exist('parfor','builtin') % check if the Matlab Parallel Computation
+                             % Toolbox is installed and use appropriate
+                             % function
+    generate_neurogram_function = @generate_neurogram_BEZ2018a_parallelized;
+    disp('Using parallelized version of neurogram generation function')
+else
+    generate_neurogram_function = @generate_neurogram_BEZ2018a;
+    disp('Using serial version of neurogram generation function')
+end
+
 % Set audiogram
 ag_fs = [125 250 500 1e3 2e3 4e3 8e3];
 ag_dbloss = [0 0 0 0 0 0 0]; % Normal hearing
@@ -16,30 +26,16 @@ ag_dbloss = [0 0 0 0 0 0 0]; % Normal hearing
 
 species = 2; % Human cochlear tuning (Shera et al., 2002)
 
-clock
-% [stim, Fs_stim] = audioread('defineit.wav');
-[stim, Fs_stim] = audioread('/data/home-local/anagathil/AudioData/Speech/TIMIT/fadg0_sx379.wav');
-stim = stim(1:5*Fs_stim);
-
-% load('defineit.mat');
+[stim, Fs_stim] = audioread('defineit.wav');
+% [stim, Fs_stim] = audioread('./stimuli/d1_s1.wav'); % load stimulus
 
 stimdb = 65; % speech level in dB SPL
 
 stim = stim/rms(stim)*20e-6*10^(stimdb/20);
 
-% Check to see if running under Matlab or Octave
-if exist ('OCTAVE_VERSION', 'builtin') ~= 0
-[neurogram_ft,neurogram_mr,neurogram_Sout,t_ft,t_mr,t_Sout,CFs] = generate_neurogram_BEZ2018_octaveparallel(stim,Fs_stim,species,ag_fs,ag_dbloss);
-else
-[neurogram_ft,neurogram_mr,neurogram_Sout,t_ft,t_mr,t_Sout,CFs] = generate_neurogram_BEZ2018a_parallelized(stim,Fs_stim,species,ag_fs,ag_dbloss);
-end
-
-clock
-
-% save -v7 temp_parallel_output.mat
+[neurogram_ft,neurogram_mr,neurogram_Sout,t_ft,t_mr,t_Sout,CFs] = generate_neurogram_function(stim,Fs_stim,species,ag_fs,ag_dbloss);
 
 ng1=figure;
-
 set(ng1,'renderer','painters');
 winlen = 256; % Window length for the spectrogram analyses
 sp1 = subplot(2,1,1);
@@ -80,6 +76,7 @@ plot_neurogram(t_ft,CFs,neurogram_ft,sp2);
 caxis([0 20])
 title('Fine-timing Neurogram')
 xlim(xl)
+
 
 ng3=figure;
 set(ng3,'renderer','painters');

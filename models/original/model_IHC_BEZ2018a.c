@@ -1,21 +1,26 @@
-/* This is the BEZ2018 version of the code for auditory periphery model from the Carney, Bruce and Zilany labs.
- * 
- * This release implements the version of the model described in:
- *
- *   Bruce, I.C., Erfani, Y., and Zilany, M.S.A. (2018). "A Phenomenological
- *   model of the synapse between the inner hair cell and auditory nerve: 
- *   Implications of limited neurotransmitter release sites," to appear in
- *   Hearing Research. (Special Issue on "Computational Models in Hearing".)
- *
- * Please cite this paper if you publish any research
- * results obtained with this code or any modified versions of this code.
- *
- * See the file readme.txt for details of compiling and running the model.
- *
- * %%% Ian C. Bruce (ibruce@ieee.org), Yousof Erfani (erfani.yousof@gmail.com),
- *     Muhammad S. A. Zilany (msazilany@gmail.com) - December 2017 %%%
- *
- */
+/* This is the BEZ2018a version of the code for auditory periphery model from the Carney, Bruce and Zilany labs.
+*
+* This release implements the version of the model described in:
+*
+* Bruce, I.C., Erfani, Y., and Zilany, M.S.A. (2018). "A Phenomenological
+* model of the synapse between the inner hair cell and auditory nerve:
+* Implications of limited neurotransmitter release sites," Hearing Research 360:40-54.
+* (Special Issue on "Computational Models in Hearing".)
+*
+* with the synapse modifications described in:
+*
+* Bruce, I., Buller, A., and Zilany, M. "Modeling of auditory nerve fiber input/output functions
+* near threshold," Acoustics 2023, Sydney, Australia, December 2023.
+*
+* Please cite these two publications if you publish any research
+* results obtained with this code or any modified versions of this code.
+*
+* See the file readme.txt for details of compiling and running the model.
+*
+* %%% Ian C. Bruce (ibruce@ieee.org), Muhammad S. A. Zilany (msazilany@gmail.com)
+* - December 2023 %%%
+*
+*/
 
 #include <stdio.h>
 #include <stdlib.h>

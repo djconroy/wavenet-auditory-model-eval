@@ -1,6 +1,6 @@
-% model_IHC_BEZ2018 - Bruce, Erfani & Zilany (2018) Auditory Nerve Model
+% model_IHC_BEZ2018a - Bruce, Erfani & Zilany (2018) Auditory Nerve Model (Dec 2023 update)
 %
-%     vihc = model_IHC_BEZ2018(pin,CF,nrep,dt,reptime,cohc,cihc,species);
+%     vihc = model_IHC_BEZ2018a(pin,CF,nrep,dt,reptime,cohc,cihc,species);
 %
 % vihc is the inner hair cell (IHC) relative transmembrane potential (in volts)
 %
@@ -16,7 +16,7 @@
 %
 % For example,
 %
-%    vihc = model_IHC_BEZ2018(pin,1e3,10,1/100e3,0.2,1,1,2); **requires 8 input arguments
+%    vihc = model_IHC_BEZ2018a(pin,1e3,10,1/100e3,0.2,1,1,2); **requires 8 input arguments
 %
 % models a normal human fiber of high spontaneous rate (normal OHC & IHC function) with a CF of 1 kHz, 
 % for 10 repetitions and a sampling rate of 100 kHz, for a repetition duration of 200 ms, and

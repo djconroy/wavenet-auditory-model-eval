@@ -15,7 +15,7 @@ psthbinwidth_mr = 100e-6; % mean-rate binwidth in seconds;
 simdur = ceil(T*1.2/psthbinwidth_mr)*psthbinwidth_mr;
 
 % Run model_IHC_BEZ2018 function to estimate the size of vihc and variable.  
-vihc = model_IHC_BEZ2018(stim100k,CFs(1),nrep,1/Fs,simdur,cohcs(1),cihcs(1),species);
+vihc = model_IHC_BEZ2018a(stim100k,CFs(1),nrep,1/Fs,simdur,cohcs(1),cihcs(1),species);
 vihc_mat=zeros(numcfs,length(vihc));
 clear vihc
 
@@ -26,7 +26,7 @@ parfor CFind = 1:numcfs
     cohc = cohcs(CFind);
     cihc = cihcs(CFind);
         
-    vihc = model_IHC_BEZ2018(stim100k,CF,nrep,1/Fs,simdur,cohc,cihc,species);
+    vihc = model_IHC_BEZ2018a(stim100k,CF,nrep,1/Fs,simdur,cohc,cihc,species);
     vihc_mat(CFind,:) = vihc;
     
 end
