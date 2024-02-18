@@ -400,7 +400,7 @@ double Synapse(double *ihcout, double tdres, double cf, int totalstim, int nrep,
 
         default:
 
-            mexErrMsgTxt("expliketype value not known\n",expliketype);
+            mexErrMsgTxt("expliketype value not known\n");
     }
 
     for (k=0; k<delaypoint; k++)
