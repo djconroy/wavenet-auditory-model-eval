@@ -55,9 +55,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
     double *pxtmp, *cftmp, *nreptmp, *tdrestmp, *noiseTypetmp, *implnttmp, *sponttmp, *tabstmp, *treltmp, *expliketmp;
 
-    double *meanrate, *varrate, *psth, *synout, *trd_vector, *trel_vector;
+    double *psth, *synout;
 
-    void SingleAN(double *, double, int, double, int, int, int, double, double, double, int, double *, double *, double *, double *, double *, double *);
+    void SingleAN(double *, double, int, double, int, int, int, double, double, double, int, double *, double *);
 
     /* Check for proper number of arguments */
 
@@ -66,9 +66,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         mexErrMsgTxt("model_Synapse requires 10 input arguments.");
     };
 
-    if (nlhs > 6)
+    if (nlhs > 2)
     {
-        mexErrMsgTxt("model_Synapse has a maximum of 6 output argument.");
+        mexErrMsgTxt("model_Synapse has a maximum of 2 output argument.");
     };
 
     /* Assign pointers to the inputs */
@@ -142,33 +142,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     outsize[1] = totalstim;
 
     plhs[0] = mxCreateNumericArray(2, outsize, mxDOUBLE_CLASS, mxREAL);
-    plhs[1] = mxCreateNumericArray(2, outsize, mxDOUBLE_CLASS, mxREAL);
-    plhs[2] = mxCreateNumericArray(2, outsize, mxDOUBLE_CLASS, mxREAL);
 
     outsize[1] = totalstim*nrep;
-    plhs[3] = mxCreateNumericArray(2, outsize, mxDOUBLE_CLASS, mxREAL);
-
-    plhs[4] = mxCreateNumericArray(2, outsize, mxDOUBLE_CLASS, mxREAL);
-    plhs[5] = mxCreateNumericArray(2, outsize, mxDOUBLE_CLASS, mxREAL);
+    plhs[1] = mxCreateNumericArray(2, outsize, mxDOUBLE_CLASS, mxREAL);
 
     /* Assign pointers to the outputs */
 
     psth	  = mxGetPr(plhs[0]);
-    meanrate	  = mxGetPr(plhs[1]);
-    varrate = mxGetPr(plhs[2]);
-    synout = mxGetPr(plhs[3]);
-    trd_vector = mxGetPr(plhs[4]);
-    trel_vector = mxGetPr(plhs[5]);
+    synout = mxGetPr(plhs[1]);
 
     /* run the model */
 
-    SingleAN(px,cf,nrep,tdres,totalstim,noiseType,implnt,spont,tabs,trel,expliketype,meanrate,varrate,psth,synout,trd_vector,trel_vector);
+    SingleAN(px,cf,nrep,tdres,totalstim,noiseType,implnt,spont,tabs,trel,expliketype,psth,synout);
 
     mxFree(px);
 
 }
 
-void SingleAN(double *px, double cf, int nrep, double tdres, int totalstim, int noiseType, int implnt, double spont, double tabs, double trel, int expliketype, double *meanrate, double *varrate, double *psth, double *synout, double *trd_vector, double *trel_vector)
+void SingleAN(double *px, double cf, int nrep, double tdres, int totalstim, int noiseType, int implnt, double spont, double tabs, double trel, int expliketype, double *psth, double *synout)
 {
 
     /*variables for the signal-path, control-path and onward */
@@ -184,7 +175,7 @@ void SingleAN(double *px, double cf, int nrep, double tdres, int totalstim, int 
     double  total_mean_rate;
     /* Declarations of the functions used in the program */
     double Synapse(double *, double, double, int, int, double, int,  int, int, double, double *);
-    int SpikeGenerator(double *,double ,double, double, double,double , int , double , double, double , int , int , double,long,  double *, double *);
+    int SpikeGenerator(double *, double, double, double, double, double, int, double, double, double, int, int, double, long, double *);
 
     /*====== Run the synapse model ======*/
     I = Synapse(px, tdres, cf, totalstim, nrep, spont, noiseType, implnt, expliketype, sampFreq, synout);
@@ -220,26 +211,9 @@ void SingleAN(double *px, double cf, int nrep, double tdres, int totalstim, int 
          sptime  = (double*)mxCalloc(MaxArraySizeSpikes,sizeof(double));
         }
 
-        nspikes =  SpikeGenerator(synout,  tdres, t_rd_rest, t_rd_init, tau, t_rd_jump, nSites, tabs, trel, spont, totalstim, nrep,  total_mean_rate,MaxArraySizeSpikes,  sptime, trd_vector) ;
+        nspikes =  SpikeGenerator(synout, tdres, t_rd_rest, t_rd_init, tau, t_rd_jump, nSites, tabs, trel, spont, totalstim, nrep, total_mean_rate, MaxArraySizeSpikes, sptime) ;
 
     } while (nspikes<0);  /* Repeat if spike time array was not long enough */
-
-    /* Calculate the analytical estimates of meanrate and varrate and wrapping them up based on no. of repetitions */
-    for(i = 0; i<I ; i++)
-    {
-
-        ipst = (int) (fmod(i,totalstim));
-        if (synout[i]>0)
-        {
-            trel_i = __min(trel*100/synout[i],trel);
-            trel_vector[i] = trel_i;
-
-            meanrate[ipst] = meanrate[ipst] + synout[i]/(synout[i]*(tabs + trd_vector[i]/nSites + trel_i) + 1)/nrep;  /* estimated instantaneous mean rate */
-            varrate[ipst]  = varrate[ipst] + ((11*pow(synout[i],7)*pow(trd_vector[i],7))/2 + (3*pow(synout[i],8)*pow(trd_vector[i],8))/16 + 12288*pow(synout[i],2)*pow(trel_i,2) + trd_vector[i]*(22528*pow(synout[i],3)*pow(trel_i,2) + 22528*synout[i]) + pow(trd_vector[i],6)*(3*pow(synout[i],8)*pow(trel_i,2) + 82*pow(synout[i],6)) + pow(trd_vector[i],5)*(88*pow(synout[i],7)*pow(trel_i,2) + 664*pow(synout[i],5)) + pow(trd_vector[i],4)*(976*pow(synout[i],6)*pow(trel_i,2) + 3392*pow(synout[i],4)) + pow(trd_vector[i],3)*(5376*pow(synout[i],5)*pow(trel_i,2) + 10624*pow(synout[i],3)) + pow(trd_vector[i],2)*(15616*pow(synout[i],4)*pow(trel_i,2) + 20992*pow(synout[i],2)) + 12288)/(pow(synout[i],2)*pow(synout[i]*trd_vector[i] + 4,4)*(3*pow(synout[i],2)*pow(trd_vector[i],2) + 40*synout[i]*trd_vector[i] + 48)*pow(trd_vector[i]/4 + tabs + trel_i + 1/synout[i],3))/nrep; /* estimated instananeous variance in the discharge rate */
-        }
-        else
-            trel_vector[i] = trel;
-    };
 
     /* Generate PSTH */
     for(i = 0; i < nspikes; i++)
@@ -518,7 +492,7 @@ double Synapse(double *ihcout, double tdres, double cf, int totalstim, int nrep,
 /* ------------------------------------------------------------------------------------ */
 /* Pass the output of Synapse model through the Spike Generator */
 
-int SpikeGenerator(double *synout, double tdres, double t_rd_rest, double t_rd_init, double tau, double t_rd_jump, int nSites, double tabs, double trel, double spont, int totalstim, int nrep,double total_mean_rate,long MaxArraySizeSpikes, double *sptime, double *trd_vector)
+int SpikeGenerator(double *synout, double tdres, double t_rd_rest, double t_rd_init, double tau, double t_rd_jump, int nSites, double tabs, double trel, double spont, int totalstim, int nrep, double total_mean_rate, long MaxArraySizeSpikes, double *sptime)
 {
 
     /* Initializing the variables: */
@@ -737,13 +711,7 @@ int SpikeGenerator(double *synout, double tdres, double t_rd_rest, double t_rd_i
             t_rd_decay = 1;
         }
 
-        /* Store the value of the adaptive mean redocking time if it is within the simulation output period */
-        if ((k>=0)&&(k<totalstim*nrep))
-            trd_vector [k] = current_redocking_period;
-
         k = k+1;
-
-
     };
 
     mxFree(preRelease_initialGuessTimeBins);
