@@ -57,15 +57,26 @@ function run_pipeline(spl, snr)
     timitDatastore = audioDatastore("TIMIT", "IncludeSubfolders", true)
 
     while hasdata(timitDatastore)
-        [audio, info] = read(timitDatastore);
+        [speech, info] = read(timitDatastore);
 
-        % Normalize the audio signal to the specified sound pressure level (SPL)
-        audio = audio / rms(audio) * 20e-6 * 10 ^ (spl / 20);
+        % Normalize the speech signal to the specified sound pressure level (SPL)
+        speech = speech / rms(speech) * 20e-6 * 10 ^ (spl / 20);
 
-        if ~(isStringScalar(snr) && strcmp(snr, "N/A"))
-            % Add white Gaussian noise to the audio in accordance with the
-            % specified signal-to-noise ratio (SNR)
-            audio = awgn(audio, snr, 'measured');
+        if isStringScalar(snr) && strcmp(snr, "N/A")
+            noisy_speech_file = "";
+
+            speech_file = info.FileName;
+        else
+            % Add white Gaussian noise to the speech signal in accordance with
+            % the specified signal-to-noise ratio (SNR)
+            speech = awgn(speech, snr, 'measured');
+
+            % Save the noisified speech signal to a temporary WAVE file for
+            % use by the WaveNet model
+            noisy_speech_file = "noisy.wav";
+            audiowrite(noisy_speech_file, speech, info.SampleRate)
+
+            speech_file = noisy_speech_file;
         end
 
 
@@ -73,7 +84,7 @@ function run_pipeline(spl, snr)
         %%%%%%%%%% START OF CODE NOT WRITTEN BY ME %%%%%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-        stim100k = resample(audio,Fs,info.SampleRate).';
+        stim100k = resample(speech,Fs,info.SampleRate).';
         T  = length(stim100k)/Fs;  % stimulus duration in seconds
 
         simdur = ceil(T*1.2/psthbinwidth_mr)*psthbinwidth_mr;
@@ -124,5 +135,10 @@ function run_pipeline(spl, snr)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%%%%%%%%% END OF CODE NOT WRITTEN BY ME %%%%%%%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+        if noisy_speech_file ~= ""
+            delete noisy_speech_file
+        end
     end
 end
