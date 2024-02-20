@@ -137,7 +137,7 @@ function run_pipeline(spl, snr)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-        if noisy_speech_file ~= ""
+        if noisy_speech_file == "noisy.wav"
             delete noisy_speech_file
         end
     end
