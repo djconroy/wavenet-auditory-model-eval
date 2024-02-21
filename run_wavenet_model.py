@@ -2,7 +2,7 @@
 This script is a modified version of models/wavenet/run_model.py,
 which was written by Anil Nagathil.
 
-I made one significant change (indicated below) and other insignificant changes to the code.
+Significant changes to the code are indicated below (insignificant changes aren't).
 """
 import torch
 import numpy as np
@@ -68,12 +68,20 @@ if __name__ == '__main__':
     NET.to(device)
     NET.load_state_dict(torch.load(args.model, map_location=torch.device('cpu')))
 
-    # read and normalize signal
-    signal, _ = librosa.load(args.file, sr=fs)
-
     #####################################################
     ############ START OF CODE WRITTEN BY ME ############
     #####################################################
+
+    print("Running run_wavenet_model.py")
+
+    """
+    Hack:
+    With sr=None, librosa.load preserves the native sampling rate of the input,
+    which is 16000 Hz for TIMIT audio signals, which is the expected sampling rate
+    for inputs to the WaveNet model.
+    """
+    signal, _ = librosa.load(args.file, sr=None)
+
     """
     Hack:
     The speech signal in "noisy.wav" has already been normalized to an SPL,
@@ -82,6 +90,10 @@ if __name__ == '__main__':
     if args.file != "noisy.wav":
         rms = np.sqrt(np.mean(np.square(signal)))
         signal = (signal / rms) * 20e-6 * (10 ** (args.spl / 20))
+
+    # Convert the signal from a numpy array to a tensor
+    signal = torch.from_numpy(signal)
+
     #####################################################
     ############ END OF CODE WRITTEN BY ME ##############
     #####################################################
