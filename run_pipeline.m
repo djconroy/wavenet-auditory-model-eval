@@ -11,7 +11,7 @@ function run_pipeline(spl, snr)
     %%%%%%%%%% START OF CODE NOT WRITTEN BY ME %%%%%%%%%%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    species = 1; % cat
+    species = 2; % human
     numCFs = 80;
     CFs = logspace(log10(125), log10(8000), numCFs);
 
