@@ -49,11 +49,11 @@
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
 	
-	double *px, cf, tdres, reptime, cohc, cihc;
+	double *px, cf, tdres, replen, cohc, cihc;
 	int    nrep, pxbins, lp, totalstim, species;
     mwSize outsize[2];
     
-	double *pxtmp, *cftmp, *nreptmp, *tdrestmp, *reptimetmp, *cohctmp, *cihctmp, *speciestmp;
+	double *pxtmp, *cftmp, *nreptmp, *tdrestmp, *replentmp, *cohctmp, *cihctmp, *speciestmp;
     double *ihcout;
    
 	void   IHCAN(double *, double, int, double, int, double, double, int, double *);
@@ -76,7 +76,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	cftmp		= mxGetPr(prhs[1]);
 	nreptmp		= mxGetPr(prhs[2]);
 	tdrestmp	= mxGetPr(prhs[3]);
-	reptimetmp	= mxGetPr(prhs[4]);
+	replentmp	= mxGetPr(prhs[4]);
     cohctmp		= mxGetPr(prhs[5]);
     cihctmp		= mxGetPr(prhs[6]);
     speciestmp	= mxGetPr(prhs[7]);
@@ -120,9 +120,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
     tdres = tdrestmp[0];
 	
-	reptime = reptimetmp[0];
-	if (reptime<pxbins*tdres)  /* duration of stimulus = pxbins*tdres */
-		mexErrMsgTxt("reptime should be equal to or longer than the stimulus duration.\n");
+	replen = replentmp[0];
+	if (replen < pxbins)  /* stimulus length = pxbins */
+		mexErrMsgTxt("replen should be equal to or longer than the stimulus length\n");
 
     cohc = cohctmp[0]; /* impairment in the OHC  */
 	if ((cohc<0)|(cohc>1))
@@ -137,12 +137,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		mexPrintf("cihc (= %1.1f) must be between 0 and 1\n",cihc);
 		mexErrMsgTxt("\n");
 	}
-	
-   
-	/* Calculate number of samples for total repetition time */
 
-	/*totalstim = (int)floor((reptime*1e3)/(tdres*1e3)); */ /*older definition*/
-    totalstim = (int)floor(reptime/tdres+0.5);
+    totalstim = (int) replen;
 
     px = (double*)mxCalloc(totalstim,sizeof(double)); 
 
@@ -364,11 +360,13 @@ void IHCAN(double *px, double cf, int nrep, double tdres, int totalstim,
    };  /* End of the loop */
    
     /* Stretched out the IHC output according to nrep (number of repetitions) */
-   
-    for(i=0;i<totalstim*nrep;i++)
-	{
-		ihcouttmp[i] = ihcouttmp[(int) (fmod(i,totalstim))];
-  	};   
+    if (nrep > 1)
+    {
+        for(i=0;i<totalstim*nrep;i++)
+        {
+            ihcouttmp[i] = ihcouttmp[(int) (fmod(i,totalstim))];
+        };
+    }
    	/* Adjust total path delay to IHC output signal */
     if (species==1)
         delay      = delay_cat(cf);
