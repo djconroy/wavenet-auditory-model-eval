@@ -133,4 +133,4 @@ if __name__ == '__main__':
         frame_idx += 1
 
     # save IHCogram for MATLAB comparison
-    savemat('tmp.mat', {'ihcogram': ihcogram_pred})
+    savemat('ihcogram.mat', {'ihcogram': ihcogram_pred})
