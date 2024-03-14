@@ -95,7 +95,7 @@ if __name__ == '__main__':
     ############ END OF CODE WRITTEN BY ME ##############
     #####################################################
 
-    signal = signal/sigMax
+    signal = signal / sigMax
     signal = signal.to(device)
 
     # segmentation
