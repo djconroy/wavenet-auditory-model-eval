@@ -91,13 +91,11 @@ if __name__ == '__main__':
         rms = np.sqrt(np.mean(np.square(signal)))
         signal = (signal / rms) * 20e-6 * (10 ** (args.spl / 20))
 
-    # Convert the signal from a numpy array to a tensor
-    signal = torch.from_numpy(signal)
-
     #####################################################
     ############ END OF CODE WRITTEN BY ME ##############
     #####################################################
 
+    signal = signal/sigMax
     signal = signal.to(device)
 
     # segmentation
