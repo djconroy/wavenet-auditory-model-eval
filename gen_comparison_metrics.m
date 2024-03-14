@@ -31,7 +31,7 @@ function gen_comparison_metrics(audio_file_name, spl, snr)
         audio_name = noisy_audio_file;
     end
 
-    outputDir = "outputs" + extractBetween(audio_file_name, pwd, '.WAV');
+    outputDir = "outputs";
     mkdir(outputDir)
 
     % Run the WaveNet model
