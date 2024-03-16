@@ -5,7 +5,8 @@ function gen_comparison_metrics(audio_file_name, spl, snr)
         snr (1, 1) = "N/A"
     end
 
-    wavenet_Fs = 16000; % Sampling rate of audio signal inputs the WaveNet model is fitted to
+    Fs = 100e3; % Sampling frequency of audio signal inputs to the auditory model
+    wavenet_Fs = 16000; % Sampling frequency of audio signal inputs the WaveNet model is fitted to
     wavenet_RF = 2048; % Size of the receptive field of the WaveNet model
 
     addpath(fullfile('models', 'original'))
@@ -47,54 +48,12 @@ function gen_comparison_metrics(audio_file_name, spl, snr)
         delete(noisy_audio_file)
     end
 
-
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%% START OF CODE NOT WRITTEN BY ME %%%%%%%%%%
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    species = 2; % human
-    numCFs = 80;
-    CFs = logspace(log10(125), log10(8000), numCFs);
-
-    cohcs  = ones(1, numCFs);  % normal ohc function
-    cihcs  = ones(1, numCFs);  % normal ihc function
-
-    numsponts = [10 10 30]; % Number of low-spont, medium-spont, and high-spont fibers at each CF in a healthy AN
-
-    if exist('ANpopulation.mat','file')
-        load('ANpopulation.mat');
-        disp('Loading existing population of AN fibers saved in ANpopulation.mat')
-        if (size(sponts.LS,2)<numsponts(1))||(size(sponts.MS,2)<numsponts(2))||(size(sponts.HS,2)<numsponts(3))||(size(sponts.HS,1)<numCFs||~exist('tabss','var'))
-            disp('Saved population of AN fibers in ANpopulation.mat is too small - generating a new population');
-            [sponts,tabss,trels] = generateANpopulation(numCFs,numsponts);
-        end
-    else
-        [sponts,tabss,trels] = generateANpopulation(numCFs,numsponts);
-        disp('Generating population of AN fibers, saved in ANpopulation.mat')
-    end
-
-    sponts_concat = zeros(numCFs,sum(numsponts));
-    tabss_concat = zeros(numCFs,sum(numsponts));
-    trels_concat = zeros(numCFs,sum(numsponts));
-
-    for CFlp = 1:numCFs
-        sponts_concat(CFlp,:) = [sponts.LS(CFlp,1:numsponts(1)) sponts.MS(CFlp,1:numsponts(2)) sponts.HS(CFlp,1:numsponts(3))];
-        tabss_concat(CFlp,:) = [tabss.LS(CFlp,1:numsponts(1)) tabss.MS(CFlp,1:numsponts(2)) tabss.HS(CFlp,1:numsponts(3))];
-        trels_concat(CFlp,:) = [trels.LS(CFlp,1:numsponts(1)) trels.MS(CFlp,1:numsponts(2)) trels.HS(CFlp,1:numsponts(3))];
-    end
-
-    implnt = 0;    % "0" for approximate or "1" for actual implementation of the power-law functions in the Synapse
-    noiseType = 1;  % 0 for fixed fGn (1 for variable fGn)
-    expliketype = 1; % 1 for shifted softplus (preferred); 0 for no expontential-like function; 2 for shifted exponential; 3 for shifted Boltmann
-
-    % stimulus parameters
-    Fs = 100e3;  % sampling rate in Hz (must be 100, 200 or 500 kHz)
-
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%%% START OF CODE WRITTEN BY ANDREW HINES %%%%%%%
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    Nfir = 30; % proportional to FIR filter length used for resampling: higher Nfir, better accuracy & longer comp time
+    Nfir = 30; % proportional to FIR filter length used for resampling:
+    % higher Nfir, better accuracy & longer comp time
     stimFs = resample(audio_signal, Fs, audio_sampling_rate, Nfir);
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -103,20 +62,19 @@ function gen_comparison_metrics(audio_file_name, spl, snr)
 
     stimFs = stimFs';
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%%%% START OF CODE WRITTEN BY ME %%%%%%%%%%%%
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
     clear audio_signal
+
+    [species, numCFs, CFs, cohcs, cihcs, numsponts, sponts_concat, tabss_concat,...
+    trels_concat, implnt, noiseType, expliketype] = get_auditory_model_parameters();
 
     vihcFs_wavenet = resample(ihcogram(1, :), Fs, wavenet_Fs, Nfir);
     vihcFs_wavenet_len = length(vihcFs_wavenet);
-    psth_tfs_wavenet = model_Synapse_BEZ2018a(vihcFs_wavenet, CFs(1), 1, 1 / Fs, noiseType, implnt,...
-        sponts_concat(1, 1), tabss_concat(1, 1), trels_concat(1, 1), expliketype);
+    psth_tfs_wavenet = model_Synapse_BEZ2018a(vihcFs_wavenet, CFs(1), 1, 1 / Fs, noiseType,...
+        implnt, sponts_concat(1, 1), tabss_concat(1, 1), trels_concat(1, 1), expliketype);
     clear vihcFs_wavenet
 
     [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs_wavenet);
+    clear psth_tfs_wavenet
 
     % Memory allocation for neurograms
     env_neurogram = zeros(numCFs, length(env_neurogram_row));
@@ -190,7 +148,8 @@ function gen_comparison_metrics(audio_file_name, spl, snr)
     % Delete the MAT-file produced by the run_wavenet_model.py script
     delete(ihcogram_file)
 
-    save(fullfile(outputDir, 'neurograms'), 'env_neurogram', 'env_neurogram_wavenet', 'tfs_neurogram', 'tfs_neurogram_wavenet')
+    save(fullfile(outputDir, 'neurograms'), 'env_neurogram', 'env_neurogram_wavenet',...
+        'tfs_neurogram', 'tfs_neurogram_wavenet')
 
     disp('ENV and TFS NSIM scores for windows of CFs')
     [ENV_NSIMs, mean_ENV_NSIM] = nsim_calc(env_neurogram, env_neurogram_wavenet);
@@ -204,5 +163,6 @@ function gen_comparison_metrics(audio_file_name, spl, snr)
     mean_SDR = mean(SDRs);
     disp("Mean SDR: " + num2str(mean_SDR))
 
-    save(fullfile(outputDir, 'results'), 'SDRs', 'mean_SDR', 'ENV_NSIMs', 'mean_ENV_NSIM', 'TFS_NSIMs', 'mean_TFS_NSIM')
+    save(fullfile(outputDir, 'results'), 'SDRs', 'mean_SDR', 'ENV_NSIMs', 'mean_ENV_NSIM',...
+        'TFS_NSIMs', 'mean_TFS_NSIM')
 end
