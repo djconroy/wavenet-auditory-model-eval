@@ -163,6 +163,6 @@ function gen_comparison_metrics(audio_file_name, spl, snr)
     mean_SDR = mean(SDRs);
     disp("Mean SDR: " + num2str(mean_SDR))
 
-    save(fullfile(outputDir, 'results'), 'SDRs', 'mean_SDR', 'ENV_NSIMs', 'mean_ENV_NSIM',...
-        'TFS_NSIMs', 'mean_TFS_NSIM')
+    save(fullfile(outputDir, 'comparison_metrics'), 'SDRs', 'mean_SDR', 'ENV_NSIMs',...
+        'mean_ENV_NSIM', 'TFS_NSIMs', 'mean_TFS_NSIM')
 end
