@@ -1,7 +1,8 @@
 % Change the input arguments as you wish and then run the pipeline from the terminal with
 % matlab -batch "run_pipeline"
 
-audio_file_name = "";
+audio_file_name = fullfile(pwd, "sample", "LDC93S1.wav");
+%audio_file_name = "";
 spl = 60;
 snr = "N/A";
 
