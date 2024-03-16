@@ -1,7 +1,12 @@
 % This script is a modified version of code by Andrew Hines.
-% This function calculates NSIM scores. NSIM is based on SSIM.
+% This function calculates NSIM scores.
+% NSIM is based on SSIM. The code for SSIM is available here:
+% https://www.cns.nyu.edu/~lcv/ssim/
 
-function [freq_NSIMs, mNSIM] = nsim_calc(neuro_r, neuro_d)
+% neuro_r Reference neurogram to compare against
+% neuro_d Degraded neurogram 
+
+function [freq_NSIMs, mean_NSIM] = nsim(neuro_r, neuro_d)
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%%%%%%%% START OF CODE WRITTEN BY ME %%%%%%%%%%%%
@@ -47,5 +52,5 @@ function [freq_NSIMs, mNSIM] = nsim_calc(neuro_r, neuro_d)
 
     % Return NSIM scores for windows with specific CFs as well as the mean NSIM score
     freq_NSIMs = mean(L_r_d.*S_r_d, 2);
-    mNSIM = mean(freq_NSIMs);
+    mean_NSIM = mean(freq_NSIMs);
 end
