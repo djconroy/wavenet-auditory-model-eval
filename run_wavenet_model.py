@@ -74,13 +74,7 @@ if __name__ == '__main__':
 
     print("Running run_wavenet_model.py")
 
-    """
-    Hack:
-    With sr=None, librosa.load preserves the native sampling rate of the input,
-    which is 16000 Hz for TIMIT audio signals, which is the expected sampling rate
-    for inputs to the WaveNet model.
-    """
-    signal, _ = librosa.load(args.file, sr=None)
+    signal, _ = librosa.load(args.file, sr=fs)
 
     """
     Hack:
