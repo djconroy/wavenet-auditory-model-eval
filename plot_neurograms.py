@@ -29,7 +29,7 @@ def plot_neurogram(neurogram, ax: Axes, vmin, vmax, aspect, title, tfs=False):
     ax.margins(0)
     yticks = [0, 16, 32, 48, 64, 79]
     ax.set_yticks(yticks, labels=[CF[ytick] for ytick in yticks])
-    ax.set_ylabel("CFs", rotation="horizontal")
+    ax.set_ylabel("CFs", rotation="horizontal", verticalalignment="center")
     ax.set_title(title)
     return image
 
