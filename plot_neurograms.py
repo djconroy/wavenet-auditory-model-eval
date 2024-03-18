@@ -55,9 +55,9 @@ vmin = np.min(env_neurogram)
 # Plot ENV neurograms for the original and WaveNet models
 fig, axs = plt.subplots(2, 1, sharex=True, sharey=True, layout="compressed")
 image1 = plot_neurogram(env_neurogram, axs[0], vmin, vmax,
-                        aspect=2, title="ENV Neurogram, Original")
+                        aspect=1, title="ENV Neurogram, Original")
 image2 = plot_neurogram(env_neurogram_wavenet, axs[1], vmin, vmax,
-                        aspect=2, title="ENV Neurogram, WaveNet")
+                        aspect=1, title="ENV Neurogram, WaveNet")
 axs[1].set_xlabel("Time (seconds)")
 colorbar = fig.colorbar(image1, ax=axs, pad=0.028, aspect=30)
 colorbar.ax.set_ylabel("Auditory Nerve Firing Intensity",
