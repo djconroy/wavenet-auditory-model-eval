@@ -17,20 +17,19 @@ TIMIT_CORE_TEST_SET_DIRS = {
     for key, speakers in TIMIT_CORE_TEST_SET_SPEAKERS.items()
 }
 
-if __name__ == "__main__":
-    for key, core_test_set in TIMIT_CORE_TEST_SET_DIRS.items():
-        core_test_set_dir = TIMIT_DATASETS_DIR + TIMIT_CORE_TEST_SET + key
-        for dialect, speaker in enumerate(TIMIT_CORE_TEST_SET_SPEAKERS[key], start=1):
-            # Create a directory to store the test data files for the speaker
-            core_test_set_speaker_dir = core_test_set_dir + "/" + str(dialect) + "/" + speaker
-            os.makedirs(core_test_set_speaker_dir, exist_ok=True)
+for key, core_test_set in TIMIT_CORE_TEST_SET_DIRS.items():
+    core_test_set_dir = TIMIT_DATASETS_DIR + TIMIT_CORE_TEST_SET + key
+    for dialect, speaker in enumerate(TIMIT_CORE_TEST_SET_SPEAKERS[key], start=1):
+        # Create a directory to store the test data files for the speaker
+        core_test_set_speaker_dir = core_test_set_dir + "/" + str(dialect) + "/" + speaker
+        os.makedirs(core_test_set_speaker_dir, exist_ok=True)
 
-            # Get the test data files for the speaker
-            timit_data = os.listdir(core_test_set[dialect - 1])
-            timit_data.sort()  # Sort data alphabetically
-            timit_data = timit_data[10:]  # Skip the SA sentences before the SI and SX sentences
+        # Get the test data files for the speaker
+        timit_data = os.listdir(core_test_set[dialect - 1])
+        timit_data.sort()  # Sort data alphabetically
+        timit_data = timit_data[10:]  # Skip the SA sentences before the SI and SX sentences
 
-            # Copy the test data files for the speaker into the newly-created directory
-            for file in timit_data:
-                #shutil.move(core_test_set[dialect - 1] + "/" + file, core_test_set_speaker_dir)
-                shutil.copy(core_test_set[dialect - 1] + "/" + file, core_test_set_speaker_dir)
+        # Copy the test data files for the speaker into the newly-created directory
+        for file in timit_data:
+            #shutil.move(core_test_set[dialect - 1] + "/" + file, core_test_set_speaker_dir)
+            shutil.copy(core_test_set[dialect - 1] + "/" + file, core_test_set_speaker_dir)
