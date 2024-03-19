@@ -6,7 +6,7 @@ from matplotlib.axes import Axes
 from math import log10
 
 
-CF = np.logspace(log10(125), log10(8000), 80, base=10.0).astype(int)
+CF = np.round(np.logspace(log10(125), log10(8000), 80, base=10.0)).astype(int)
 
 
 def get_time(sample_index, tfs):
