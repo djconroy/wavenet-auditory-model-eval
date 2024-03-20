@@ -17,6 +17,8 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
 
     resample_ratio = Fs / timit_Fs;
 
+    auditory_periphery_delay = 91;
+
     [species, num_CFs, CFs, Cohcs, Cihcs, num_sponts, sponts_concat,...
     tabss_concat, trels_concat, power_law_implementation, noise_type,...
     explike_type] = get_auditory_model_parameters();
@@ -116,10 +118,14 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
 
         % Subtract wavenet_RF - 1 from the word transciption file indices and then multiply
         % the indices by the resample ratio to make them align with vihc_Fs_wavenet
+        % Then add auditory_periphery_delay to the indices to align them with the delayed
+        % responses of the auditory model
         words_start_indices = words_start_indices - wavenet_RF + 1;
         words_start_indices = round(words_start_indices * resample_ratio);
+        words_start_indices = words_start_indices + auditory_periphery_delay;
         words_end_indices = words_end_indices - wavenet_RF + 1;
         words_end_indices = round(words_end_indices * resample_ratio);
+        words_end_indices = words_end_indices + auditory_periphery_delay;
 
         num_lines_phonemes_info = size(phonemes_start_indices, 1);
         last_phoneme_num = num_lines_phonemes_info - 1; % Subtract 1 to discount the end marker
@@ -137,10 +143,14 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
 
         % Subtract wavenet_RF - 1 from the phoneme transciption file indices and then multiply
         % the indices by the resample ratio to make them align with vihc_Fs_wavenet
+        % Then add auditory_periphery_delay to the indices to align them with the delayed
+        % responses of the auditory model
         phonemes_start_indices = phonemes_start_indices - wavenet_RF + 1;
         phonemes_start_indices = round(phonemes_start_indices * resample_ratio);
+        phonemes_start_indices = phonemes_start_indices + auditory_periphery_delay;
         phonemes_end_indices = phonemes_end_indices - wavenet_RF + 1;
         phonemes_end_indices = round(phonemes_end_indices * resample_ratio);
+        phonemes_end_indices = phonemes_end_indices + auditory_periphery_delay;
 
         % Memory allocation for SDRs
         SDRs = zeros(num_CFs, 1);
