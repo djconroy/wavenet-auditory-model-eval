@@ -10,9 +10,12 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
     output_dir = "outputs";
     mkdir(output_dir)
 
+    timit_Fs = 16000; % Sampling frequency of TIMIT speech signals
     Fs = 100000; % Sampling frequency of audio signal inputs to the auditory model
     wavenet_Fs = 16000; % Sampling frequency of audio signal inputs the WaveNet model is fitted to
     wavenet_RF = 2048; % Size of the receptive field of the WaveNet model
+
+    resample_ratio = Fs / timit_Fs;
 
     [species, num_CFs, CFs, Cohcs, Cihcs, num_sponts, sponts_concat,...
     tabss_concat, trels_concat, power_law_implementation, noise_type,...
@@ -56,9 +59,20 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
             delete(noisy_speech_file)
         end
 
+        % Open the TIMIT word and phoneme transcription files corresponding to the speech signal
+        words_file_ID = fopen(speech_info.FileName(1:end - 3) + "WRD");
+        phonemes_file_ID = fopen(speech_info.FileName(1:end - 3) + "PHN");
+
+
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%%%%%% START OF CODE WRITTEN BY ANDREW HINES %%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        words_info = textscan(words_file_ID, "%d%d%s");
+        phonemes_info = textscan(phonemes_file_ID, "%d%d%s");
+
+        fclose(words_file_ID);
+        fclose(phonemes_file_ID);
 
         Nfir = 30; % proportional to FIR filter length used for resampling:
         % higher Nfir, better accuracy & longer comp time
@@ -68,7 +82,70 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
         %%%%%%% END OF CODE WRITTEN BY ANDREW HINES %%%%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
         speech_Fs = speech_Fs';
+
+        % Each line of a TIMIT transcription file has the form:
+        % (start sample index) (end sample index) (phoneme/word/sentence)
+
+        words_start_indices = words_info{1};
+        words_end_indices = words_info{2};
+        words = words_info{3};
+
+        phonemes_start_indices = phonemes_info{1};
+        phonemes_end_indices = phonemes_info{2};
+        phonemes = phonemes_info{3};
+
+        % Here's an example of consecutive lines in a phoneme transcription file:
+        % 61538 66230 ae
+        % 66230 69560 s
+        % The indices of a phoneme's last sample and the next phoneme's first sample are the same
+
+        last_word_num = size(words_start_indices, 1);
+        first_word_num = 1;
+
+        % Skip to the first word preceded by at least wavenet_RF - 1 zero-indexed audio samples
+        while words_start_indices(first_word_num) < wavenet_RF - 1
+            first_word_num = first_word_num + 1;
+        end
+        num_words = last_word_num - first_word_num + 1;
+
+        words_start_indices = words_start_indices(first_word_num:last_word_num);
+        words_end_indices = words_end_indices(first_word_num:last_word_num);
+        words = words(first_word_num:last_word_num);
+
+        % Subtract wavenet_RF - 1 from the word transciption file indices and then multiply
+        % the indices by the resample ratio to make them align with vihc_Fs_wavenet
+        words_start_indices = words_start_indices - wavenet_RF + 1;
+        words_start_indices = round(words_start_indices * resample_ratio);
+        words_end_indices = words_end_indices - wavenet_RF + 1;
+        words_end_indices = round(words_end_indices * resample_ratio);
+
+        num_lines_phonemes_info = size(phonemes_start_indices, 1);
+        last_phoneme_num = num_lines_phonemes_info - 1; % Subtract 1 to discount the end marker
+        first_phoneme_num = 2; % Start with 2 to discount the start marker
+
+        % Skip to the first phoneme preceded by at least wavenet_RF - 1 zero-indexed audio samples
+        while phonemes_start_indices(first_phoneme_num) < wavenet_RF - 1
+            first_phoneme_num = first_phoneme_num + 1;
+        end
+        num_phonemes = last_phoneme_num - first_phoneme_num + 1;
+
+        phonemes_start_indices = phonemes_start_indices(first_phoneme_num:last_phoneme_num);
+        phonemes_end_indices = phonemes_end_indices(first_phoneme_num:last_phoneme_num);
+        phonemes = phonemes(first_phoneme_num:last_phoneme_num);
+
+        % Subtract wavenet_RF - 1 from the phoneme transciption file indices and then multiply
+        % the indices by the resample ratio to make them align with vihc_Fs_wavenet
+        phonemes_start_indices = phonemes_start_indices - wavenet_RF + 1;
+        phonemes_start_indices = round(phonemes_start_indices * resample_ratio);
+        phonemes_end_indices = phonemes_end_indices - wavenet_RF + 1;
+        phonemes_end_indices = round(phonemes_end_indices * resample_ratio);
+
+        % Memory allocation for SDRs
+        SDRs = zeros(num_CFs, 1);
+        words_SDRs = zeros(num_CFs, num_words);
+        phonemes_SDRs = zeros(num_CFs, num_phonemes);
 
         vihc_Fs_wavenet = resample(ihcogram(1, :), Fs, wavenet_Fs, Nfir);
         vihc_Fs_wavenet_len = length(vihc_Fs_wavenet);
@@ -77,23 +154,55 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
             trels_concat(1, 1), explike_type);
         clear vihc_Fs_wavenet
 
+        % Create cell arrays to store neurograms for words
+        words_env_neurograms = cell(1, num_words);
+        words_env_neurograms_wavenet = cell(1, num_words);
+        words_tfs_neurograms = cell(1, num_words);
+        words_tfs_neurograms_wavenet = cell(1, num_words);
+
+        for word_num = 1:num_words
+            [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs_wavenet(...
+                words_start_indices(word_num):words_end_indices(word_num)));
+
+            % Memory allocation for word neurograms
+            words_env_neurograms{word_num} = zeros(num_CFs, length(env_neurogram_row));
+            words_env_neurograms_wavenet{word_num} = zeros(num_CFs, length(env_neurogram_row));
+            words_tfs_neurograms{word_num} = zeros(num_CFs, length(tfs_neurogram_row));
+            words_tfs_neurograms_wavenet{word_num} = zeros(num_CFs, length(tfs_neurogram_row));
+        end
+
+        % Create cell arrays to store neurograms for phonemes
+        phonemes_env_neurograms = cell(1, num_phonemes);
+        phonemes_env_neurograms_wavenet = cell(1, num_phonemes);
+        phonemes_tfs_neurograms = cell(1, num_phonemes);
+        phonemes_tfs_neurograms_wavenet = cell(1, num_phonemes);
+
+        for phoneme_num = 1:num_phonemes
+            [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs_wavenet(...
+                phonemes_start_indices(phoneme_num):phonemes_end_indices(phoneme_num)));
+
+            % Memory allocation for phoneme neurograms
+            phonemes_env_neurograms{phoneme_num} = zeros(num_CFs, length(env_neurogram_row));
+            phonemes_env_neurograms_wavenet{phoneme_num} =...
+                zeros(num_CFs, length(env_neurogram_row));
+            phonemes_tfs_neurograms{phoneme_num} = zeros(num_CFs, length(tfs_neurogram_row));
+            phonemes_tfs_neurograms_wavenet{phoneme_num} =...
+                zeros(num_CFs, length(tfs_neurogram_row));
+        end
+
         [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs_wavenet);
         clear psth_tfs_wavenet
 
-        % Memory allocation for neurograms
+        % Memory allocation for sentence neurograms
         env_neurogram = zeros(num_CFs, length(env_neurogram_row));
         env_neurogram_wavenet = zeros(num_CFs, length(env_neurogram_row));
-        clear env_neurogram_row
         tfs_neurogram = zeros(num_CFs, length(tfs_neurogram_row));
         tfs_neurogram_wavenet = zeros(num_CFs, length(tfs_neurogram_row));
-        clear tfs_neurogram_row
-
-        % Memory allocation for SDRs
-        SDRs = zeros(1, num_CFs);
+        clear env_neurogram_row tfs_neurogram_row
 
         speech_Fs_len = length(speech_Fs);
 
-        for CF_num =1:num_CFs
+        for CF_num = 1:num_CFs
             CF = CFs(CF_num);
             vihc_Fs = model_IHC_BEZ2018a(speech_Fs, CF, 1, 1 / Fs, speech_Fs_len,...
                 Cohcs(CF_num), Cihcs(CF_num), species);
@@ -113,7 +222,7 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
             % Skip past the number of initial values in vihc_Fs and psth_tfs corresponding to
             % the duration of the WaveNet model's receptive field
             % This aligns vihc_Fs with vihc_Fs_wavenet and psth_tfs with the TFS PSTHs that
-            % will be produced from vihcFs_wavenet
+            % will be produced from vihc_Fs_wavenet
             vihc_Fs = vihc_Fs(speech_Fs_len - vihc_Fs_wavenet_len + 1:end);
             psth_tfs = psth_tfs(speech_Fs_len - vihc_Fs_wavenet_len + 1:end);
 
@@ -124,12 +233,39 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
 
             SDRs(CF_num) = signal_to_distortion_ratio(vihc_Fs, vihc_Fs_wavenet);
 
+            parfor word_num = 1:num_words
+                words_SDRs(CF_num, word_num) = signal_to_distortion_ratio(...
+                    vihc_Fs(words_start_indices(word_num):...
+                            words_end_indices(word_num)),...
+                    vihc_Fs_wavenet(words_start_indices(word_num):...
+                                    words_end_indices(word_num)));
+            end
+            parfor phoneme_num = 1:num_phonemes
+                phonemes_SDRs(CF_num, phoneme_num) = signal_to_distortion_ratio(...
+                    vihc_Fs(phonemes_start_indices(phoneme_num):...
+                            phonemes_end_indices(phoneme_num)),...
+                    vihc_Fs_wavenet(phonemes_start_indices(phoneme_num):...
+                                    phonemes_end_indices(phoneme_num)));
+            end
             clear vihc_Fs
 
+            parfor word_num = 1:num_words
+                [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs(...
+                    words_start_indices(word_num):words_end_indices(word_num)));
+                words_env_neurograms{word_num}(CF_num, :) = env_neurogram_row;
+                words_tfs_neurograms{word_num}(CF_num, :) = tfs_neurogram_row;
+            end
+            parfor phoneme_num = 1:num_phonemes
+                [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs(...
+                    phonemes_start_indices(phoneme_num):phonemes_end_indices(phoneme_num)));
+                phonemes_env_neurograms{phoneme_num}(CF_num, :) = env_neurogram_row;
+                phonemes_tfs_neurograms{phoneme_num}(CF_num, :) = tfs_neurogram_row;
+            end
             [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs);
             clear psth_tfs
             env_neurogram(CF_num, :) = env_neurogram_row;
             tfs_neurogram(CF_num, :) = tfs_neurogram_row;
+            clear env_neurogram_row tfs_neurogram_row
 
             psth_tfs_wavenet = zeros(1, vihc_Fs_wavenet_len);
 
@@ -145,10 +281,23 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
             % Average the PSTH for all the simulated auditory nerves
             psth_tfs_wavenet = psth_tfs_wavenet / sum(num_sponts);
 
+            parfor word_num = 1:num_words
+                [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs_wavenet(...
+                    words_start_indices(word_num):words_end_indices(word_num)));
+                words_env_neurograms_wavenet{word_num}(CF_num, :) = env_neurogram_row;
+                words_tfs_neurograms_wavenet{word_num}(CF_num, :) = tfs_neurogram_row;
+            end
+            parfor phoneme_num = 1:num_phonemes
+                [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs_wavenet(...
+                    phonemes_start_indices(phoneme_num):phonemes_end_indices(phoneme_num)));
+                phonemes_env_neurograms_wavenet{phoneme_num}(CF_num, :) = env_neurogram_row;
+                phonemes_tfs_neurograms_wavenet{phoneme_num}(CF_num, :) = tfs_neurogram_row;
+            end
             [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs_wavenet);
             clear psth_tfs_wavenet
             env_neurogram_wavenet(CF_num, :) = env_neurogram_row;
             tfs_neurogram_wavenet(CF_num, :) = tfs_neurogram_row;
+            clear env_neurogram_row tfs_neurogram_row
         end
 
         clear speech_Fs ihcogram
@@ -158,16 +307,60 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
 
         save(fullfile(output_subdir, 'neurograms'),...
             'env_neurogram', 'env_neurogram_wavenet',...
-            'tfs_neurogram', 'tfs_neurogram_wavenet')
+            'tfs_neurogram', 'tfs_neurogram_wavenet',...
+            'words_env_neurograms', 'words_env_neurograms_wavenet',...
+            'words_tfs_neurograms', 'words_tfs_neurograms_wavenet',...
+            'phonemes_env_neurograms', 'phonemes_env_neurograms_wavenet',...
+            'phonemes_tfs_neurograms', 'phonemes_tfs_neurograms_wavenet')
 
         [env_NSIMs, mean_env_NSIM] = nsim(env_neurogram, env_neurogram_wavenet);
         [tfs_NSIMs, mean_tfs_NSIM] = nsim(tfs_neurogram, tfs_neurogram_wavenet);
+
+        words_env_NSIMs = zeros(length(env_NSIMs), num_words);
+        words_tfs_NSIMs = zeros(length(tfs_NSIMs), num_words);
+        words_mean_env_NSIMs = zeros(1, num_words);
+        words_mean_tfs_NSIMs = zeros(1, num_words);
+        parfor word_num = 1:num_words
+            if size(words_env_neurograms{word_num}, 2) > 1
+                [words_env_NSIMs(:, word_num), words_mean_env_NSIMs(word_num)] =...
+                    nsim(words_env_neurograms{word_num},...
+                         words_env_neurograms_wavenet{word_num});
+            end
+            [words_tfs_NSIMs(:, word_num), words_mean_tfs_NSIMs(word_num)] =...
+                nsim(words_tfs_neurograms{word_num},...
+                     words_tfs_neurograms_wavenet{word_num});
+        end
+
+        phonemes_env_NSIMs = zeros(length(env_NSIMs), num_phonemes);
+        phonemes_tfs_NSIMs = zeros(length(tfs_NSIMs), num_phonemes);
+        phonemes_mean_env_NSIMs = zeros(1, num_phonemes);
+        phonemes_mean_tfs_NSIMs = zeros(1, num_phonemes);
+        parfor phoneme_num = 1:num_phonemes
+            if size(phonemes_env_neurograms{phoneme_num}, 2) > 1
+                [phonemes_env_NSIMs(:, phoneme_num), phonemes_mean_env_NSIMs(phoneme_num)] =...
+                    nsim(phonemes_env_neurograms{phoneme_num},...
+                         phonemes_env_neurograms_wavenet{phoneme_num});
+            end
+            [phonemes_tfs_NSIMs(:, phoneme_num), phonemes_mean_tfs_NSIMs(phoneme_num)] =...
+                nsim(phonemes_tfs_neurograms{phoneme_num},...
+                     phonemes_tfs_neurograms_wavenet{phoneme_num});
+        end
+
         mean_SDR = mean(SDRs);
+        words_mean_SDRs = mean(words_SDRs, 1);
+        phonemes_mean_SDRs = mean(phonemes_SDRs, 1);
 
         save(fullfile(output_subdir, 'comparison_metrics'),...
+            'words', 'phonemes',...
             'SDRs', 'mean_SDR',...
+            'words_SDRs', 'words_mean_SDRs',...
+            'phonemes_SDRs', 'phonemes_mean_SDRs',...
             'env_NSIMs', 'mean_env_NSIM',...
-            'tfs_NSIMs', 'mean_tfs_NSIM')
+            'tfs_NSIMs', 'mean_tfs_NSIM',...
+            'words_env_NSIMs', 'words_mean_env_NSIMs',...
+            'words_tfs_NSIMs', 'words_mean_tfs_NSIMs',...
+            'phonemes_env_NSIMs', 'phonemes_mean_env_NSIMs',...
+            'phonemes_tfs_NSIMs', 'phonemes_mean_tfs_NSIMs')
 
         disp("Progress: " + (100 * progress(speech_datastore)) + "%")
     end
