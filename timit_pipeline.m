@@ -7,8 +7,7 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
 
     warning('off', 'MATLAB:MKDIR:DirectoryExists')
 
-    output_dir = "outputs";
-    mkdir(output_dir)
+    output_root_dir = "outputs";
 
     timit_Fs = 16000; % Sampling frequency of TIMIT speech signals
     Fs = 100000; % Sampling frequency of audio signal inputs to the auditory model
@@ -312,10 +311,17 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
 
         clear speech_Fs ihcogram
 
-        output_subdir = output_dir + extractBetween(speech_info.FileName, pwd, ".WAV");
-        mkdir(output_subdir)
+        speech_dir = extractBetween(speech_info.FileName, pwd, ".WAV");
+        spl_dir = "SPL" + num2str(spl);
+        if isStringScalar(snr) && strcmp(snr, "N/A")
+            snr_dir = "SNRNA";
+        else
+            snr_dir = "SNR" + num2str(snr);
+        end
+        output_dir = fullfile(output_root_dir + speech_dir, spl_dir, snr_dir);
+        mkdir(output_dir)
 
-        save(fullfile(output_subdir, 'neurograms'),...
+        save(fullfile(output_dir, 'neurograms'),...
             'env_neurogram', 'env_neurogram_wavenet',...
             'tfs_neurogram', 'tfs_neurogram_wavenet',...
             'words_env_neurograms', 'words_env_neurograms_wavenet',...
@@ -360,7 +366,7 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
         words_mean_SDRs = mean(words_SDRs, 1);
         phonemes_mean_SDRs = mean(phonemes_SDRs, 1);
 
-        save(fullfile(output_subdir, 'comparison_metrics'),...
+        save(fullfile(output_dir, 'comparison_metrics'),...
             'words', 'phonemes',...
             'SDRs', 'mean_SDR',...
             'words_SDRs', 'words_mean_SDRs',...
