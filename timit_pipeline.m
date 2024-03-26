@@ -60,14 +60,16 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
             delete(noisy_speech_file)
         end
 
-        % Open the TIMIT word and phoneme transcription files corresponding to the speech signal
-        words_file_ID = fopen(speech_info.FileName(1:end - 3) + "WRD");
-        phonemes_file_ID = fopen(speech_info.FileName(1:end - 3) + "PHN");
-
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%%%%%% START OF CODE WRITTEN BY ANDREW HINES %%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        [path, sentence] = fileparts(speech_info.FileName);
+
+        % Open the TIMIT word and phoneme transcription files corresponding to the speech signal
+        words_file_ID = fopen(fullfile(path, sentence) + ".WRD");
+        phonemes_file_ID = fopen(fullfile(path, sentence) + ".PHN");
 
         words_info = textscan(words_file_ID, "%d%d%s");
         phonemes_info = textscan(phonemes_file_ID, "%d%d%s");
