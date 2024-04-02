@@ -171,7 +171,7 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
         words_tfs_neurograms = cell(1, num_words);
         words_tfs_neurograms_wavenet = cell(1, num_words);
 
-        for word_num = 1:num_words
+        parfor word_num = 1:num_words
             [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs_wavenet(...
                 words_start_indices(word_num):words_end_indices(word_num)));
 
@@ -188,7 +188,7 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
         phonemes_tfs_neurograms = cell(1, num_phonemes);
         phonemes_tfs_neurograms_wavenet = cell(1, num_phonemes);
 
-        for phoneme_num = 1:num_phonemes
+        parfor phoneme_num = 1:num_phonemes
             [env_neurogram_row, tfs_neurogram_row] = gen_neurogram_row(psth_tfs_wavenet(...
                 phonemes_start_indices(phoneme_num):phonemes_end_indices(phoneme_num)));
 
