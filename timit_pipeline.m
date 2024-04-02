@@ -42,7 +42,7 @@ function timit_pipeline(speech_dataset_dir, spl, snr)
             % Save the noisified speech signal to a temporary WAVE file for
             % use by the WaveNet model
             noisy_speech_file = "noisy.wav";
-            audiowrite(noisy_speech_file, speech, speech_info.SampleRate)
+            audiowrite(noisy_speech_file, speech, speech_info.SampleRate, 'BitsPerSample', 64)
 
             speech_file = noisy_speech_file;
         end

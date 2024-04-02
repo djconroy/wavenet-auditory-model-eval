@@ -26,7 +26,7 @@ function gen_comparison_metrics(audio_file_name, spl, snr)
         % Save the noisified speech signal to a temporary WAVE file for
         % use by the WaveNet model
         noisy_audio_file = "noisy.wav";
-        audiowrite(noisy_audio_file, audio_signal, audio_sampling_rate)
+        audiowrite(noisy_audio_file, audio_signal, audio_sampling_rate, 'BitsPerSample', 64)
 
         audio_file = noisy_audio_file;
     end
