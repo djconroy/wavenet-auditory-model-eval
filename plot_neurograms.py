@@ -18,7 +18,7 @@ def get_time(sample_index, tfs):
 
 def plot_neurogram(neurogram, ax: Axes, vmin, vmax, aspect, title, tfs=False):
     image = ax.imshow(neurogram,
-                      cmap="YlGnBu_r",
+                      cmap="RdYlBu_r" if tfs else "YlGnBu_r",
                       aspect=aspect,
                       interpolation="none",
                       vmin=vmin,
@@ -34,18 +34,19 @@ def plot_neurogram(neurogram, ax: Axes, vmin, vmax, aspect, title, tfs=False):
     return image
 
 
-parser = argparse.ArgumentParser(
-    description="Produces plots of neurograms.")
+parser = argparse.ArgumentParser(description="Produces plots of neurograms.")
 parser.add_argument("neurograms_mat_file",
                     type=str,
                     nargs="?",
-                    default="datasets/sample/neurograms.mat",
+                    default="datasets/sample/neurograms_SPL60_SNR25.mat",
                     help="the name of a MAT-file storing the neurograms")
 args = parser.parse_args()
 
-neurograms = scipy.io.loadmat(args.neurograms_mat_file)
+neurograms = scipy.io.loadmat(args.neurograms_mat_file, squeeze_me=True)
 env_neurogram = neurograms["env_neurogram"]
 env_neurogram_wavenet = neurograms["env_neurogram_wavenet"]
+words_env_neurograms = neurograms["words_env_neurograms"]
+phonemes_env_neurograms = neurograms["phonemes_env_neurograms"]
 
 # Set the max and min values of the colorbar range to the max and min
 # values in the ENV neurogram for the original model
@@ -55,11 +56,35 @@ vmin = np.min(env_neurogram)
 # Plot ENV neurograms for the original and WaveNet models
 fig, axs = plt.subplots(2, 1, sharex=True, sharey=True, layout="compressed")
 image1 = plot_neurogram(env_neurogram, axs[0], vmin, vmax,
-                        aspect=1, title="ENV Neurogram, Original")
+                        aspect=2, title="ENV Neurogram, Original")
 image2 = plot_neurogram(env_neurogram_wavenet, axs[1], vmin, vmax,
-                        aspect=1, title="ENV Neurogram, WaveNet")
+                        aspect=2, title="ENV Neurogram, WaveNet")
 axs[1].set_xlabel("Time (seconds)")
 colorbar = fig.colorbar(image1, ax=axs, pad=0.028, aspect=30)
 colorbar.ax.set_ylabel("Auditory Nerve Firing Intensity",
                        rotation=-90, verticalalignment="bottom")
 plt.savefig("env_neurograms_plots.png")
+#plt.show()
+
+
+# Set the max and min values to the max and min values in the ENV neurogram for the word wash
+vmax = np.max(words_env_neurograms[7])
+vmin = np.min(words_env_neurograms[7])
+
+fig = plt.figure(figsize=(6, 6), layout="compressed")
+spec = fig.add_gridspec(2, 3)
+ax0 = fig.add_subplot(spec[0, :])
+ax0.set_xlabel("Time (s)")
+plot_neurogram(words_env_neurograms[7], ax0, vmin, vmax, aspect=0.5,
+               title="ENV Neurogram for “wash”")
+ax10 = fig.add_subplot(spec[1, 0])
+ax10.set_xlabel("Time (s)")
+plot_neurogram(phonemes_env_neurograms[22], ax10, vmin, vmax, aspect=0.5, title="w")
+ax11 = fig.add_subplot(spec[1, 1])
+ax11.set_xlabel("Time (s)")
+plot_neurogram(phonemes_env_neurograms[23], ax11, vmin, vmax, aspect=0.5, title="ao")
+ax12 = fig.add_subplot(spec[1, 2])
+ax12.set_xlabel("Time (s)")
+plot_neurogram(phonemes_env_neurograms[24], ax12, vmin, vmax, aspect=0.5, title="sh")
+plt.savefig("env_neurogram_word_wash.png")
+#plt.show()
